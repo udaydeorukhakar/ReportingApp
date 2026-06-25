@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sands Synergy — Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --navy: #0D1B2A;
+    --teal: #1A7A6E;
+    --gold: #C9A84C;
+    --bg: #F6F5F2;
+    --border: #DDD8CC;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--navy);
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    margin: 0;
+    color: var(--gold);
+  }
+  header span { font-size: 13px; opacity: 0.8; }
+
+  .layout {
+    display: flex;
+    min-height: calc(100vh - 64px);
+  }
+  nav {
+    width: 230px;
+    background: #fff;
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+  }
+  nav h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--teal);
+    padding: 0 20px 8px;
+    margin: 0;
+  }
+  .report-link {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-left: 3px solid transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--navy);
+    cursor: pointer;
+  }
+  .report-link:hover { background: var(--bg); }
+  .report-link.active {
+    border-left-color: var(--gold);
+    background: var(--bg);
+    font-weight: 700;
+  }
+
+  main { flex: 1; padding: 28px; }
+  .panel {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .panel h3 {
+    font-family: 'Playfair Display', serif;
+    color: var(--teal);
+    margin: 0 0 14px;
+    font-size: 18px;
+  }
+  .params-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: end;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: var(--navy); font-weight: 700; }
+  .field input, .field select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-width: 140px;
+  }
+  button.primary {
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button.primary:hover { opacity: 0.9; }
+  button.secondary {
+    background: #fff;
+    color: var(--teal);
+    border: 1px solid var(--teal);
+    padding: 9px 16px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button.secondary:hover { background: var(--bg); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  th {
+    background: var(--navy);
+    color: #fff;
+    position: sticky;
+    top: 0;
+  }
+  tr:nth-child(even) { background: #FAFAF8; }
+  .table-wrap { max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+  .empty-state { color: #888; font-size: 14px; padding: 20px 0; }
+  .row-count { font-size: 12px; color: #777; margin-top: 8px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sands Synergy — Reports</h1>
+  <span id="report-title-tag"></span>
+</header>
+
+<div class="layout">
+  <nav>
+    <h2>Reports</h2>
+    <div id="report-list"></div>
+  </nav>
+
+  <main>
+    <div class="panel" id="params-panel" style="display:none;">
+      <h3 id="params-heading"></h3>
+      <div class="params-row" id="params-fields"></div>
+      <div style="margin-top:14px;">
+        <button class="primary" id="run-btn">Run Report</button>
+      </div>
+    </div>
+
+    <div class="panel" id="results-panel" style="display:none;">
+      <div class="toolbar">
+        <h3 style="margin:0;">Results</h3>
+        <button class="secondary" id="export-btn">Export to Excel</button>
+      </div>
+      <div class="table-wrap"><table id="results-table"></table></div>
+      <div class="row-count" id="row-count"></div>
+    </div>
+
+    <div class="panel" id="placeholder-panel">
+      <p class="empty-state">Select a report from the left to get started.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+  // ---- Configure this for your environment ----
+  const API_BASE = "https://sandsreports-g9d0g8dmd6d2anap.canadacentral-01.azurewebsites.net/api";
+  // ----------------------------------------------
+
+  let currentReport = null;
+  let currentRows = [];
+
+  async function loadReports() {
+    const res = await fetch(`${API_BASE}/reports`);
+    const reports = await res.json();
+    const list = document.getElementById('report-list');
+    list.innerHTML = '';
+    reports.forEach(r => {
+      const btn = document.createElement('button');
+      btn.className = 'report-link';
+      btn.textContent = r.display_name;
+      btn.onclick = () => selectReport(r, btn);
+      list.appendChild(btn);
+    });
+  }
+
+  function selectReport(report, btnEl) {
+    currentReport = report;
+    document.querySelectorAll('.report-link').forEach(b => b.classList.remove('active'));
+    btnEl.classList.add('active');
+
+    document.getElementById('placeholder-panel').style.display = 'none';
+    document.getElementById('results-panel').style.display = 'none';
+    document.getElementById('params-panel').style.display = 'block';
+    document.getElementById('params-heading').textContent = report.display_name;
+    document.getElementById('report-title-tag').textContent = report.description || '';
+
+    const fieldsWrap = document.getElementById('params-fields');
+    fieldsWrap.innerHTML = '';
+    (report.parameters || []).forEach(p => {
+      const field = document.createElement('div');
+      field.className = 'field';
+      const label = document.createElement('label');
+      label.textContent = p.display_label + (p.is_required ? ' *' : '');
+      field.appendChild(label);
+
+      const input = document.createElement('input');
+      input.type = p.param_type === 'date' ? 'date' : (p.param_type === 'int' ? 'number' : 'text');
+      input.id = `param-${p.param_name}`;
+      input.placeholder = p.default_value || '';
+      if (p.default_value) input.value = p.default_value;
+      field.appendChild(input);
+      fieldsWrap.appendChild(field);
+    });
+  }
+
+  async function runReport() {
+    if (!currentReport) return;
+    const params = new URLSearchParams();
+    (currentReport.parameters || []).forEach(p => {
+      const el = document.getElementById(`param-${p.param_name}`);
+      if (el && el.value !== '') params.set(p.param_name, el.value);
+    });
+
+    const res = await fetch(`${API_BASE}/report/${currentReport.report_id}?${params.toString()}`);
+    const data = await res.json();
+
+    if (data.error) {
+      alert(`Report error: ${data.error}`);
+      return;
+    }
+
+    currentRows = data.rows || [];
+    renderTable(data.columns || [], currentRows);
+    document.getElementById('results-panel').style.display = 'block';
+  }
+
+  function renderTable(columns, rows) {
+    const table = document.getElementById('results-table');
+    table.innerHTML = '';
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    columns.forEach(c => {
+      const th = document.createElement('th');
+      th.textContent = c;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      columns.forEach(c => {
+        const td = document.createElement('td');
+        td.textContent = row[c] ?? '';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    document.getElementById('row-count').textContent = `${rows.length} row${rows.length === 1 ? '' : 's'}`;
+  }
+
+  function exportToExcel() {
+    if (!currentRows.length) return;
+    const ws = XLSX.utils.json_to_sheet(currentRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, currentReport.display_name.slice(0, 31));
+    XLSX.writeFile(wb, `${currentReport.report_id}.xlsx`);
+  }
+
+  document.getElementById('run-btn').addEventListener('click', runReport);
+  document.getElementById('export-btn').addEventListener('click', exportToExcel);
+
+  loadReports();
+</script>
+
+</body>
+</html>
