@@ -16,8 +16,11 @@
     --border: #DDD8CC;
   }
   * { box-sizing: border-box; }
-  body {
+  html, body {
     margin: 0;
+    overflow-x: hidden;   /* only the table scrolls horizontally, never the page */
+  }
+  body {
     font-family: 'DM Sans', sans-serif;
     background: var(--bg);
     color: var(--navy);
@@ -103,7 +106,7 @@
     font-weight: 700;
   }
 
-  main { flex: 1; padding: 28px; }
+  main { flex: 1; padding: 28px; min-width: 0; }
   .panel {
     background: #fff;
     border: 1px solid var(--border);
