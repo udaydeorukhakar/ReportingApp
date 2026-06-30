@@ -208,6 +208,7 @@
 <header>
   <h1>Sands Synergy — Reports</h1>
   <span id="report-title-tag"></span>
+  <span id="user-tag" style="font-size:13px; opacity:0.85;"></span>
 </header>
 
 <div class="layout">
@@ -478,6 +479,23 @@
     applyFiltersAndRender();
   });
 
+  async function loadCurrentUser() {
+    try {
+      const res = await fetch('/.auth/me');
+      const data = await res.json();
+      const principal = data.clientPrincipal;
+      const tag = document.getElementById('user-tag');
+      if (principal) {
+        tag.innerHTML = `${principal.userDetails} &middot; <a href="/.auth/logout" style="color:#fff;">Logout</a>`;
+      } else {
+        tag.innerHTML = `<a href="/.auth/login/aad" style="color:#fff;">Login</a>`;
+      }
+    } catch (e) {
+      console.error('Could not load auth info', e);
+    }
+  }
+
+  loadCurrentUser();
   loadReports();
 </script>
 

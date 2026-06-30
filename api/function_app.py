@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import os
@@ -8,9 +9,6 @@ import psycopg2
 
 app = func.FunctionApp()
 
-# Defense in depth: even though db_object always comes from our own
-# config table, double-check its shape before ever interpolating it
-# into a SQL string.
 DB_OBJECT_PATTERN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$')
 
 
@@ -25,12 +23,33 @@ def get_connection():
     )
 
 
+def get_user_email(req: func.HttpRequest):
+    """
+    Static Web Apps injects this header on every request once auth is
+    enabled and routed through SWA's reverse proxy. It's base64-encoded
+    JSON containing the logged-in user's claims. NEVER trust a plain
+    query-string email param for identity - this header is the only
+    source SWA itself controls and can't be spoofed by the client.
+    """
+    header = req.headers.get("x-ms-client-principal")
+    if not header:
+        return None
+    try:
+        decoded = base64.b64decode(header).decode("utf-8")
+        principal = json.loads(decoded)
+        # userDetails is typically the email/UPN for AAD logins
+        return principal.get("userDetails")
+    except Exception:
+        logging.exception("Failed to parse x-ms-client-principal header")
+        return None
+
+
 def cast_param(value, param_type):
     if value is None:
         return None
     if param_type == "int":
         return int(value)
-    return value  # 'date' / 'text' / 'select' passed through as text; Postgres casts dates itself
+    return value
 
 
 def json_response(payload, status_code=200):
@@ -45,16 +64,22 @@ def json_response(payload, status_code=200):
 @app.function_name(name="reports_catalog")
 @app.route(route="reports", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def reports_catalog(req: func.HttpRequest) -> func.HttpResponse:
-    """GET /api/reports -> list of available reports + their parameter definitions."""
+    """GET /api/reports -> reports visible to the logged-in user only."""
+    user_email = get_user_email(req)
+    if not user_email:
+        return json_response({"error": "Not authenticated"}, status_code=401)
+
     try:
         conn = get_connection()
         cur = conn.cursor()
         cur.execute(
             """
             SELECT report_id, display_name, description, sort_order, parameters
-            FROM appdata.v_report_catalog
+            FROM appdata.v_employee_report_catalog
+            WHERE email = %s
             ORDER BY sort_order;
-            """
+            """,
+            (user_email,),
         )
         cols = [d[0] for d in cur.description]
         rows = cur.fetchall()
@@ -69,11 +94,29 @@ def reports_catalog(req: func.HttpRequest) -> func.HttpResponse:
 @app.function_name(name="run_report")
 @app.route(route="report/{report_id}", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def run_report(req: func.HttpRequest) -> func.HttpResponse:
-    """GET /api/report/{report_id}?param1=...&param2=... -> {columns, rows}."""
+    """GET /api/report/{report_id}?param1=... -> {columns, rows}, only if the user has access."""
+    user_email = get_user_email(req)
+    if not user_email:
+        return json_response({"error": "Not authenticated"}, status_code=401)
+
     report_id = req.route_params.get("report_id")
     try:
         conn = get_connection()
         cur = conn.cursor()
+
+        # Access check FIRST - this is the actual enforcement point.
+        # The picker UI hiding a report is just convenience; this is security.
+        cur.execute(
+            """
+            SELECT 1
+            FROM public.employees e
+            JOIN appdata.app_report_categories arc ON arc.category = e.category
+            WHERE e.email = %s AND e.is_active = TRUE AND arc.report_id = %s;
+            """,
+            (user_email, report_id),
+        )
+        if not cur.fetchone():
+            return json_response({"error": "You do not have access to this report"}, status_code=403)
 
         cur.execute(
             """
@@ -115,7 +158,7 @@ def run_report(req: func.HttpRequest) -> func.HttpResponse:
             placeholders = ", ".join(["%s"] * len(bound_values))
             sql = f"SELECT * FROM {db_object}({placeholders});"
             exec_values = bound_values
-        else:  # view -> simple equality filters on whichever params were actually provided
+        else:
             where_clauses, exec_values = [], []
             for (param_name, *_rest), value in zip(param_defs, bound_values):
                 if value is not None:
