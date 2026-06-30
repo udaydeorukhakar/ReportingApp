@@ -47,7 +47,34 @@
     background: #fff;
     border-right: 1px solid var(--border);
     padding: 16px 0;
+    position: relative;
+    transition: width 0.18s ease;
+    flex-shrink: 0;
   }
+  nav.collapsed {
+    width: 36px;
+    padding: 16px 0;
+    overflow: hidden;
+  }
+  nav.collapsed h2,
+  nav.collapsed .report-link { display: none; }
+  .nav-toggle {
+    position: absolute;
+    top: 12px;
+    right: 8px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+    line-height: 1;
+    font-size: 13px;
+    color: var(--teal);
+    cursor: pointer;
+    padding: 0;
+  }
+  nav.collapsed .nav-toggle { right: 6px; }
+  .nav-toggle:hover { background: var(--bg); }
   nav h2 {
     font-size: 12px;
     text-transform: uppercase;
@@ -90,6 +117,24 @@
     margin: 0 0 14px;
     font-size: 18px;
   }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .panel-header h3 { margin: 0; }
+  .panel-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: var(--teal);
+    cursor: pointer;
+  }
+  .panel-toggle:hover { background: var(--bg); }
+  #params-body.collapsed { display: none; }
   .params-row {
     display: flex;
     gap: 16px;
@@ -212,17 +257,23 @@
 </header>
 
 <div class="layout">
-  <nav>
+  <nav id="report-nav">
+    <button class="nav-toggle" id="nav-toggle" title="Hide/show panel">«</button>
     <h2>Reports</h2>
     <div id="report-list"></div>
   </nav>
 
   <main>
     <div class="panel" id="params-panel" style="display:none;">
-      <h3 id="params-heading"></h3>
-      <div class="params-row" id="params-fields"></div>
-      <div style="margin-top:14px;">
-        <button class="primary" id="run-btn">Run Report</button>
+      <div class="panel-header">
+        <h3 id="params-heading"></h3>
+        <button class="panel-toggle" id="params-toggle">Hide</button>
+      </div>
+      <div id="params-body">
+        <div class="params-row" id="params-fields"></div>
+        <div style="margin-top:14px;">
+          <button class="primary" id="run-btn">Run Report</button>
+        </div>
       </div>
     </div>
 
@@ -282,6 +333,8 @@ const API_BASE = "/api";
     document.getElementById('params-panel').style.display = 'block';
     document.getElementById('params-heading').textContent = report.display_name;
     document.getElementById('report-title-tag').textContent = report.description || '';
+    document.getElementById('params-body').classList.remove('collapsed');
+    document.getElementById('params-toggle').textContent = 'Hide';
 
     const fieldsWrap = document.getElementById('params-fields');
     fieldsWrap.innerHTML = '';
@@ -328,6 +381,11 @@ const API_BASE = "/api";
     renderTableShell(allColumns);
     applyFiltersAndRender();
     document.getElementById('results-panel').style.display = 'block';
+
+    // Collapse the params panel after a successful run to free up
+    // vertical space for the table - user can click "Show" to reopen
+    document.getElementById('params-body').classList.add('collapsed');
+    document.getElementById('params-toggle').textContent = 'Show';
   }
 
   // Builds the header row + the per-column filter row once per report run
@@ -478,6 +536,20 @@ const API_BASE = "/api";
     document.getElementById('search-box').value = '';
     document.querySelectorAll('.filter-row input').forEach(i => i.value = '');
     applyFiltersAndRender();
+  });
+
+  document.getElementById('nav-toggle').addEventListener('click', () => {
+    const nav = document.getElementById('report-nav');
+    const btn = document.getElementById('nav-toggle');
+    nav.classList.toggle('collapsed');
+    btn.textContent = nav.classList.contains('collapsed') ? '»' : '«';
+  });
+
+  document.getElementById('params-toggle').addEventListener('click', () => {
+    const body = document.getElementById('params-body');
+    const btn = document.getElementById('params-toggle');
+    body.classList.toggle('collapsed');
+    btn.textContent = body.classList.contains('collapsed') ? 'Show' : 'Hide';
   });
 
   async function loadCurrentUser() {
