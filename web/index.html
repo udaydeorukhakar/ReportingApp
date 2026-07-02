@@ -6,7 +6,7 @@
 <title>Sands Synergy — Reports</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <style>
   :root {
     --navy: #0D1B2A;
@@ -249,6 +249,8 @@
   .table-wrap { max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
   .empty-state { color: #888; font-size: 14px; padding: 20px 0; }
   .row-count { font-size: 12px; color: #777; margin-top: 8px; }
+  td.num, th.num { text-align: right; }
+  td.num { font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -311,6 +313,22 @@ const API_BASE = "/api";
   let globalSearch = "";
   let sortColumn = null;
   let sortDirection = 1;     // 1 = ascending, -1 = descending
+
+  // Keywords that signal a money/amount column needing 2dp formatting
+  const AMOUNT_KEYWORDS = ['amount', 'amt', 'price', 'rate', 'value', 'cost', 'total', 'charge'];
+  let columnMeta = {};   // { colName: { isNumeric, isAmount } }
+
+  function detectColumnMeta(columns, rows) {
+    columnMeta = {};
+    const sample = rows.slice(0, 50);
+    columns.forEach(col => {
+      const isAmount = AMOUNT_KEYWORDS.some(k => col.toLowerCase().includes(k));
+      const nonNull = sample.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== '');
+      const numericCount = nonNull.filter(v => !isNaN(Number(v))).length;
+      const isNumeric = nonNull.length > 0 && numericCount / nonNull.length >= 0.8;
+      columnMeta[col] = { isNumeric, isAmount };
+    });
+  }
 
   async function loadReports() {
     const res = await fetch(`${API_BASE}/reports`);
@@ -380,6 +398,7 @@ const API_BASE = "/api";
     globalSearch = '';
     sortColumn = null;
     document.getElementById('search-box').value = '';
+    detectColumnMeta(allColumns, allRows);
 
     renderTableShell(allColumns);
     applyFiltersAndRender();
@@ -401,6 +420,7 @@ const API_BASE = "/api";
     const headRow = document.createElement('tr');
     columns.forEach(col => {
       const th = document.createElement('th');
+      if (columnMeta[col]?.isNumeric) th.classList.add('num');
       th.textContent = col;
       const arrow = document.createElement('span');
       arrow.className = 'sort-arrow';
@@ -502,16 +522,25 @@ const API_BASE = "/api";
       const tr = document.createElement('tr');
       columns.forEach(c => {
         const td = document.createElement('td');
-        td.textContent = row[c] ?? '';
+        const meta = columnMeta[c];
+        const raw = row[c] ?? '';
+        if (meta?.isNumeric && raw !== '') {
+          td.classList.add('num');
+          const num = Number(raw);
+          td.textContent = meta.isAmount ? num.toFixed(2) : num.toLocaleString();
+        } else {
+          td.textContent = raw;
+        }
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
     });
   }
 
-  function exportToExcel() {
+  async function exportToExcel() {
     if (!allRows.length) return;
-    // Export respects current filters/search - exports what's visible, not just everything
+
+    // Apply same active filters as the table display
     let rows = allRows;
     Object.keys(columnFilters).forEach(col => {
       const term = (columnFilters[col] || '').trim().toLowerCase();
@@ -521,14 +550,67 @@ const API_BASE = "/api";
       const term = globalSearch.trim().toLowerCase();
       rows = rows.filter(r => allColumns.some(col => String(r[col] ?? '').toLowerCase().includes(term)));
     }
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, currentReport.display_name.slice(0, 31));
-    XLSX.writeFile(wb, `${currentReport.report_id}.xlsx`);
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(currentReport.display_name.slice(0, 31));
+
+    // Header row with yellow fill
+    ws.addRow(allColumns);
+    const headerRow = ws.getRow(1);
+    headerRow.eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
+      cell.font = { bold: true, color: { argb: 'FF0D1B2A' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        bottom: { style: 'thin', color: { argb: 'FF0D1B2A' } }
+      };
+    });
+    headerRow.height = 20;
+
+    // Data rows
+    rows.forEach(row => {
+      const values = allColumns.map(col => {
+        const val = row[col];
+        if (columnMeta[col]?.isNumeric && val !== null && val !== undefined && val !== '') {
+          return Number(val);
+        }
+        return val ?? '';
+      });
+      ws.addRow(values);
+    });
+
+    // Right-align numeric columns and apply number format for amounts
+    allColumns.forEach((col, idx) => {
+      const meta = columnMeta[col];
+      if (meta?.isNumeric) {
+        ws.getColumn(idx + 1).numFmt = meta.isAmount ? '#,##0.00' : '#,##0';
+        ws.getColumn(idx + 1).alignment = { horizontal: 'right' };
+      }
+    });
+
+    // Auto column width based on max content length (header or data)
+    ws.columns.forEach((col, idx) => {
+      const colName = allColumns[idx] || '';
+      const maxDataLen = rows.reduce((max, row) => {
+        const val = String(row[colName] ?? '');
+        return Math.max(max, val.length);
+      }, 0);
+      col.width = Math.min(Math.max(colName.length, maxDataLen, 10) + 2, 40);
+    });
+
+    // Download
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentReport.report_id}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   document.getElementById('run-btn').addEventListener('click', runReport);
-  document.getElementById('export-btn').addEventListener('click', exportToExcel);
+  document.getElementById('export-btn').addEventListener('click', () => exportToExcel());
   document.getElementById('search-box').addEventListener('input', (e) => {
     globalSearch = e.target.value;
     applyFiltersAndRender();
