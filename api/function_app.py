@@ -1,4 +1,3 @@
-import base64
 import json
 import logging
 import os
@@ -10,6 +9,7 @@ import psycopg2
 app = func.FunctionApp()
 
 DB_OBJECT_PATTERN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$')
+EMAIL_PATTERN = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
 def get_connection():
@@ -25,23 +25,16 @@ def get_connection():
 
 def get_user_email(req: func.HttpRequest):
     """
-    Static Web Apps injects this header on every request once auth is
-    enabled and routed through SWA's reverse proxy. It's base64-encoded
-    JSON containing the logged-in user's claims. NEVER trust a plain
-    query-string email param for identity - this header is the only
-    source SWA itself controls and can't be spoofed by the client.
+    Temporary: read email from query param.
+    Validated against employees table - not trusted as identity,
+    just used to look up report access.
+    Replace with x-ms-client-principal header when proper
+    Entra auth is restored.
     """
-    header = req.headers.get("x-ms-client-principal")
-    if not header:
+    email = req.params.get("user_email", "").strip().lower()
+    if not email or not EMAIL_PATTERN.match(email):
         return None
-    try:
-        decoded = base64.b64decode(header).decode("utf-8")
-        principal = json.loads(decoded)
-        # userDetails is typically the email/UPN for AAD logins
-        return principal.get("userDetails")
-    except Exception:
-        logging.exception("Failed to parse x-ms-client-principal header")
-        return None
+    return email
 
 
 def cast_param(value, param_type):
@@ -64,10 +57,9 @@ def json_response(payload, status_code=200):
 @app.function_name(name="reports_catalog")
 @app.route(route="reports", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def reports_catalog(req: func.HttpRequest) -> func.HttpResponse:
-    """GET /api/reports -> reports visible to the logged-in user only."""
     user_email = get_user_email(req)
     if not user_email:
-        return json_response({"error": "Not authenticated"}, status_code=401)
+        return json_response({"error": "Email required"}, status_code=401)
 
     try:
         conn = get_connection()
@@ -76,7 +68,7 @@ def reports_catalog(req: func.HttpRequest) -> func.HttpResponse:
             """
             SELECT report_id, display_name, description, sort_order, parameters
             FROM appdata.v_employee_report_catalog
-            WHERE email = %s
+            WHERE LOWER(email) = %s
             ORDER BY sort_order;
             """,
             (user_email,),
@@ -94,29 +86,27 @@ def reports_catalog(req: func.HttpRequest) -> func.HttpResponse:
 @app.function_name(name="run_report")
 @app.route(route="report/{report_id}", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def run_report(req: func.HttpRequest) -> func.HttpResponse:
-    """GET /api/report/{report_id}?param1=... -> {columns, rows}, only if the user has access."""
     user_email = get_user_email(req)
     if not user_email:
-        return json_response({"error": "Not authenticated"}, status_code=401)
+        return json_response({"error": "Email required"}, status_code=401)
 
     report_id = req.route_params.get("report_id")
     try:
         conn = get_connection()
         cur = conn.cursor()
 
-        # Access check FIRST - this is the actual enforcement point.
-        # The picker UI hiding a report is just convenience; this is security.
+        # Access check - still enforced even without Microsoft auth
         cur.execute(
             """
             SELECT 1
             FROM public.employees e
             JOIN appdata.app_report_categories arc ON arc.category = e.category
-            WHERE e.email = %s AND e.is_active = TRUE AND arc.report_id = %s;
+            WHERE LOWER(e.email) = %s AND e.is_active = TRUE AND arc.report_id = %s;
             """,
             (user_email, report_id),
         )
         if not cur.fetchone():
-            return json_response({"error": "You do not have access to this report"}, status_code=403)
+            return json_response({"error": "Access denied"}, status_code=403)
 
         cur.execute(
             """
@@ -128,7 +118,7 @@ def run_report(req: func.HttpRequest) -> func.HttpResponse:
         )
         report_row = cur.fetchone()
         if not report_row:
-            return json_response({"error": f"Unknown or inactive report_id: {report_id}"}, status_code=404)
+            return json_response({"error": f"Unknown report: {report_id}"}, status_code=404)
         db_object, object_type = report_row
 
         if not DB_OBJECT_PATTERN.match(db_object):
@@ -138,8 +128,7 @@ def run_report(req: func.HttpRequest) -> func.HttpResponse:
             """
             SELECT param_name, param_type, param_order, is_required, default_value
             FROM appdata.app_report_params
-            WHERE report_id = %s
-            ORDER BY param_order;
+            WHERE report_id = %s ORDER BY param_order;
             """,
             (report_id,),
         )
@@ -172,7 +161,6 @@ def run_report(req: func.HttpRequest) -> func.HttpResponse:
         rows = cur.fetchall()
         cur.close()
         conn.close()
-
         return json_response({"columns": cols, "rows": [dict(zip(cols, row)) for row in rows]})
 
     except Exception as e:

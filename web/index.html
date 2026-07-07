@@ -261,6 +261,31 @@
   <span id="user-tag" style="font-size:13px; opacity:0.85;"></span>
 </header>
 
+<!-- Email login overlay - shown until a valid email is entered -->
+<div id="login-overlay" style="
+  position:fixed; inset:0; background:rgba(13,27,42,0.92);
+  display:flex; align-items:center; justify-content:center; z-index:1000;">
+  <div style="background:#fff; border-radius:8px; padding:40px 36px; width:360px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+    <h2 style="font-family:'Playfair Display',serif; color:#0D1B2A; margin:0 0 6px;">Sands Synergy</h2>
+    <p style="color:#1A7A6E; font-size:13px; margin:0 0 28px;">Reports Portal</p>
+    <div style="text-align:left; margin-bottom:16px;">
+      <label style="font-size:12px; font-weight:700; color:#0D1B2A; display:block; margin-bottom:6px;">Your Email Address</label>
+      <input id="login-email" type="email" placeholder="you@sandssynergy.com"
+        style="width:100%; padding:10px 12px; border:1px solid #DDD8CC; border-radius:4px;
+               font-family:'DM Sans',sans-serif; font-size:14px;" />
+    </div>
+    <div id="login-error" style="color:#c0392b; font-size:12px; margin-bottom:12px; display:none;"></div>
+    <button id="login-btn" onclick="handleLogin()"
+      style="width:100%; background:#1A7A6E; color:#fff; border:none; padding:11px;
+             border-radius:4px; font-weight:700; font-size:14px; cursor:pointer;">
+      Access Reports
+    </button>
+    <p style="font-size:11px; color:#999; margin:16px 0 0;">
+      Use the email address registered with Sands Synergy
+    </p>
+  </div>
+</div>
+
 <div class="layout">
   <nav id="report-nav">
     <button class="nav-toggle" id="nav-toggle" title="Hide/show panel">«</button>
@@ -330,20 +355,6 @@ const API_BASE = "/api";
     });
   }
 
-  async function loadReports() {
-    const res = await fetch(`${API_BASE}/reports`);
-    const reports = await res.json();
-    const list = document.getElementById('report-list');
-    list.innerHTML = '';
-    reports.forEach(r => {
-      const btn = document.createElement('button');
-      btn.className = 'report-link';
-      btn.textContent = r.display_name;
-      btn.onclick = () => selectReport(r, btn);
-      list.appendChild(btn);
-    });
-  }
-
   function selectReport(report, btnEl) {
     currentReport = report;
     document.querySelectorAll('.report-link').forEach(b => b.classList.remove('active'));
@@ -374,40 +385,6 @@ const API_BASE = "/api";
       field.appendChild(input);
       fieldsWrap.appendChild(field);
     });
-  }
-
-  async function runReport() {
-    if (!currentReport) return;
-    const params = new URLSearchParams();
-    (currentReport.parameters || []).forEach(p => {
-      const el = document.getElementById(`param-${p.param_name}`);
-      if (el && el.value !== '') params.set(p.param_name, el.value);
-    });
-
-    const res = await fetch(`${API_BASE}/report/${currentReport.report_id}?${params.toString()}`);
-    const data = await res.json();
-
-    if (data.error) {
-      alert(`Report error: ${data.error}`);
-      return;
-    }
-
-    allColumns = data.columns || [];
-    allRows = data.rows || [];
-    columnFilters = {};
-    globalSearch = '';
-    sortColumn = null;
-    document.getElementById('search-box').value = '';
-    detectColumnMeta(allColumns, allRows);
-
-    renderTableShell(allColumns);
-    applyFiltersAndRender();
-    document.getElementById('results-panel').style.display = 'block';
-
-    // Collapse the params panel after a successful run to free up
-    // vertical space for the table - user can click "Show" to reopen
-    document.getElementById('params-body').classList.add('collapsed');
-    document.getElementById('params-toggle').textContent = 'Show';
   }
 
   // Builds the header row + the per-column filter row once per report run
@@ -637,24 +614,106 @@ const API_BASE = "/api";
     btn.textContent = body.classList.contains('collapsed') ? 'Show' : 'Hide';
   });
 
-  async function loadCurrentUser() {
+  let currentUserEmail = null;
+
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const errorEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+
+    if (!email || !email.includes('@')) {
+      errorEl.textContent = 'Please enter a valid email address.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    btn.textContent = 'Checking...';
+    btn.disabled = true;
+    errorEl.style.display = 'none';
+
     try {
-      const res = await fetch('/.auth/me');
+      const res = await fetch(`${API_BASE}/reports?user_email=${encodeURIComponent(email)}`);
       const data = await res.json();
-      const principal = data.clientPrincipal;
-      const tag = document.getElementById('user-tag');
-      if (principal) {
-        tag.innerHTML = `${principal.userDetails} &middot; <a href="/.auth/logout" style="color:#fff;">Logout</a>`;
-      } else {
-        tag.innerHTML = `<a href="/.auth/login/aad" style="color:#fff;">Login</a>`;
+
+      if (!Array.isArray(data) || data.length === 0) {
+        errorEl.textContent = 'No reports found for this email. Please check the address or contact your administrator.';
+        errorEl.style.display = 'block';
+        btn.textContent = 'Access Reports';
+        btn.disabled = false;
+        return;
       }
+
+      // Success - store email, hide overlay, load reports
+      currentUserEmail = email;
+      document.getElementById('login-overlay').style.display = 'none';
+      document.getElementById('user-tag').innerHTML =
+        `${email} &middot; <a href="#" onclick="handleLogout()" style="color:#fff;">Logout</a>`;
+
+      const list = document.getElementById('report-list');
+      list.innerHTML = '';
+      data.forEach(r => {
+        const btn = document.createElement('button');
+        btn.className = 'report-link';
+        btn.textContent = r.display_name;
+        btn.onclick = () => selectReport(r, btn);
+        list.appendChild(btn);
+      });
+
     } catch (e) {
-      console.error('Could not load auth info', e);
+      errorEl.textContent = 'Connection error. Please try again.';
+      errorEl.style.display = 'block';
+      btn.textContent = 'Access Reports';
+      btn.disabled = false;
     }
   }
 
-  loadCurrentUser();
-  loadReports();
+  function handleLogout() {
+    currentUserEmail = null;
+    document.getElementById('login-overlay').style.display = 'flex';
+    document.getElementById('login-email').value = '';
+    document.getElementById('report-list').innerHTML = '';
+    document.getElementById('params-panel').style.display = 'none';
+    document.getElementById('results-panel').style.display = 'none';
+    document.getElementById('placeholder-panel').style.display = 'block';
+    document.getElementById('user-tag').innerHTML = '';
+  }
+
+  // Allow pressing Enter in the email field to submit
+  document.getElementById('login-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+  });
+
+  async function runReport() {
+    if (!currentReport || !currentUserEmail) return;
+    const params = new URLSearchParams({ user_email: currentUserEmail });
+    (currentReport.parameters || []).forEach(p => {
+      const el = document.getElementById(`param-${p.param_name}`);
+      if (el && el.value !== '') params.set(p.param_name, el.value);
+    });
+
+    const res = await fetch(`${API_BASE}/report/${currentReport.report_id}?${params.toString()}`);
+    const data = await res.json();
+
+    if (data.error) {
+      alert(`Report error: ${data.error}`);
+      return;
+    }
+
+    allColumns = data.columns || [];
+    allRows = data.rows || [];
+    columnFilters = {};
+    globalSearch = '';
+    sortColumn = null;
+    document.getElementById('search-box').value = '';
+    detectColumnMeta(allColumns, allRows);
+
+    renderTableShell(allColumns);
+    applyFiltersAndRender();
+    document.getElementById('results-panel').style.display = 'block';
+
+    document.getElementById('params-body').classList.add('collapsed');
+    document.getElementById('params-toggle').textContent = 'Show';
+  }
 </script>
 
 </body>
