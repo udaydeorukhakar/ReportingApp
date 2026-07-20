@@ -492,12 +492,11 @@ const visibleParams = (report.parameters || [])
   }
 
   function openDrillDown(link, cellValue) {
-    // Open the target report in a new tab with the cell value pre-filled
-    // and autorun=1 so it runs immediately without the user clicking anything
     const params = new URLSearchParams({
       report: link.target_report,
       [link.target_param]: cellValue,
-      autorun: '1'
+      autorun: '1',
+      user_email: currentUserEmail   // carry email so new tab skips login prompt
     });
     window.open(`${window.location.pathname}?${params.toString()}`, '_blank');
   }
@@ -575,12 +574,13 @@ const visibleParams = (report.parameters || [])
     nav.classList.toggle('collapsed');
     btn.textContent = nav.classList.contains('collapsed') ? '»' : '«';
   });
-  document.getElementById('params-toggle').addEventListener('click', () => {
-    const body = document.getElementById('params-body');
-    const btn  = document.getElementById('params-toggle');
-    body.classList.toggle('collapsed');
-    btn.textContent = body.classList.contains('collapsed') ? 'Show' : 'Hide';
-  });
+  // Auto-login when arriving via drill-down (email carried in URL)
+  const _initParams = new URLSearchParams(window.location.search);
+  const _initEmail  = _initParams.get('user_email');
+  if (_initEmail) {
+    document.getElementById('login-email').value = _initEmail;
+    handleLogin();   // silently logs in, then autoRunReport fires since autorun=1 is also in URL
+  }
 </script>
 </body>
 </html>
