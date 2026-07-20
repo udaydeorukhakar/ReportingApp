@@ -295,7 +295,11 @@
     // (year/month are 1 & 2; drill params are 3+)
     const fieldsWrap = document.getElementById('params-fields');
     fieldsWrap.innerHTML = '';
-    const visibleParams = (report.parameters || []).filter(p => p.param_order <= 2);
+    // const visibleParams = (report.parameters || []).filter(p => p.param_order <= 2);
+const visibleParams = (report.parameters || [])
+    .filter(p => p.param_order <= 2)
+    .sort((a, b) => a.param_order - b.param_order);
+
     visibleParams.forEach(p => {
       const field = document.createElement('div');
       field.className = 'field';
@@ -334,7 +338,8 @@
   async function runReport() {
     if (!currentReport || !currentUserEmail) return;
     const params = new URLSearchParams({ user_email: currentUserEmail });
-    (currentReport.parameters || []).forEach(p => {
+    //(currentReport.parameters || []).forEach(p => {
+(currentReport.parameters || []).sort((a, b) => a.param_order - b.param_order).forEach(p => {
       const el = document.getElementById(`param-${p.param_name}`);
       if (el && el.value !== '') params.set(p.param_name, el.value);
     });
