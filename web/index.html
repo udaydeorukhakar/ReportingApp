@@ -8,249 +8,92 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <style>
-  :root {
-    --navy: #0D1B2A;
-    --teal: #1A7A6E;
-    --gold: #C9A84C;
-    --bg: #F6F5F2;
-    --border: #DDD8CC;
-  }
+  :root { --navy:#0D1B2A; --teal:#1A7A6E; --gold:#C9A84C; --bg:#F6F5F2; --border:#DDD8CC; }
   * { box-sizing: border-box; }
-  html, body {
-    margin: 0;
-    overflow-x: hidden;   /* only the table scrolls horizontally, never the page */
-  }
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--navy);
-  }
+  html, body { margin:0; overflow-x:hidden; }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--navy); }
+
   header {
-    background: var(--navy);
-    color: #fff;
-    padding: 18px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    background:var(--navy); color:#fff; padding:18px 28px;
+    display:flex; align-items:center; justify-content:space-between;
   }
-  header h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    margin: 0;
-    color: var(--gold);
-  }
-  header span { font-size: 13px; opacity: 0.8; }
+  header h1 { font-family:'Playfair Display',serif; font-size:22px; margin:0; color:var(--gold); }
+  header span { font-size:13px; opacity:0.8; }
 
-  .layout {
-    display: flex;
-    min-height: calc(100vh - 64px);
-  }
+  .layout { display:flex; min-height:calc(100vh - 64px); }
+
   nav {
-    width: 230px;
-    background: #fff;
-    border-right: 1px solid var(--border);
-    padding: 16px 0;
-    position: relative;
-    transition: width 0.18s ease;
-    flex-shrink: 0;
+    width:230px; background:#fff; border-right:1px solid var(--border);
+    padding:16px 0; position:relative; transition:width 0.18s ease; flex-shrink:0;
   }
-  nav.collapsed {
-    width: 36px;
-    padding: 16px 0;
-    overflow: hidden;
-  }
-  nav.collapsed h2,
-  nav.collapsed .report-link { display: none; }
+  nav.collapsed { width:36px; padding:16px 0; overflow:hidden; }
+  nav.collapsed h2, nav.collapsed .report-link { display:none; }
   .nav-toggle {
-    position: absolute;
-    top: 12px;
-    right: 8px;
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    width: 22px;
-    height: 22px;
-    line-height: 1;
-    font-size: 13px;
-    color: var(--teal);
-    cursor: pointer;
-    padding: 0;
+    position:absolute; top:12px; right:8px; background:none;
+    border:1px solid var(--border); border-radius:4px;
+    width:22px; height:22px; line-height:1; font-size:13px;
+    color:var(--teal); cursor:pointer; padding:0;
   }
-  nav.collapsed .nav-toggle { right: 6px; }
-  .nav-toggle:hover { background: var(--bg); }
-  nav h2 {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--teal);
-    padding: 0 20px 8px;
-    margin: 0;
-  }
+  nav.collapsed .nav-toggle { right:6px; }
+  .nav-toggle:hover { background:var(--bg); }
+  nav h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--teal); padding:0 20px 8px; margin:0; }
   .report-link {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 10px 20px;
-    background: none;
-    border: none;
-    border-left: 3px solid transparent;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: var(--navy);
-    cursor: pointer;
+    display:block; width:100%; text-align:left; padding:10px 20px;
+    background:none; border:none; border-left:3px solid transparent;
+    font-family:'DM Sans',sans-serif; font-size:14px; color:var(--navy); cursor:pointer;
   }
-  .report-link:hover { background: var(--bg); }
-  .report-link.active {
-    border-left-color: var(--gold);
-    background: var(--bg);
-    font-weight: 700;
-  }
+  .report-link:hover { background:var(--bg); }
+  .report-link.active { border-left-color:var(--gold); background:var(--bg); font-weight:700; }
 
-  main { flex: 1; padding: 28px; min-width: 0; }
-  .panel {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 20px 24px;
-    margin-bottom: 20px;
-  }
-  .panel h3 {
-    font-family: 'Playfair Display', serif;
-    color: var(--teal);
-    margin: 0 0 14px;
-    font-size: 18px;
-  }
-  .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-  }
-  .panel-header h3 { margin: 0; }
-  .panel-toggle {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 3px 10px;
-    font-size: 12px;
-    color: var(--teal);
-    cursor: pointer;
-  }
-  .panel-toggle:hover { background: var(--bg); }
-  #params-body.collapsed { display: none; }
-  .params-row {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    align-items: end;
-  }
-  .field { display: flex; flex-direction: column; gap: 4px; }
-  .field label { font-size: 12px; color: var(--navy); font-weight: 700; }
-  .field input, .field select {
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    min-width: 140px;
-  }
-  button.primary {
-    background: var(--teal);
-    color: #fff;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 14px;
-    cursor: pointer;
-  }
-  button.primary:hover { opacity: 0.9; }
-  button.secondary {
-    background: #fff;
-    color: var(--teal);
-    border: 1px solid var(--teal);
-    padding: 9px 16px;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 14px;
-    cursor: pointer;
-  }
-  button.secondary:hover { background: var(--bg); }
-  button.ghost {
-    background: none;
-    color: #888;
-    border: 1px solid var(--border);
-    padding: 9px 14px;
-    border-radius: 4px;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  button.ghost:hover { background: var(--bg); }
+  main { flex:1; padding:28px; min-width:0; }
+  .panel { background:#fff; border:1px solid var(--border); border-radius:6px; padding:20px 24px; margin-bottom:20px; }
+  .panel h3 { font-family:'Playfair Display',serif; color:var(--teal); margin:0 0 14px; font-size:18px; }
+  .panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .panel-header h3 { margin:0; }
+  .panel-toggle { background:none; border:1px solid var(--border); border-radius:4px; padding:3px 10px; font-size:12px; color:var(--teal); cursor:pointer; }
+  .panel-toggle:hover { background:var(--bg); }
+  #params-body.collapsed { display:none; }
 
-  /* Toolbar above the table: search box + clear filters */
-  .table-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-  }
-  .search-box {
-    flex: 1;
-    min-width: 220px;
-    max-width: 360px;
-    padding: 9px 12px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-  }
-  .search-box:focus { outline: 2px solid var(--teal); outline-offset: -1px; }
-  .toolbar-actions { display: flex; gap: 10px; }
+  .params-row { display:flex; gap:16px; flex-wrap:wrap; align-items:end; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:12px; color:var(--navy); font-weight:700; }
+  .field input, .field select { padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-family:'DM Sans',sans-serif; font-size:14px; min-width:140px; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td {
-    text-align: left;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-  th {
-    background: var(--navy);
-    color: #fff;
-    position: sticky;
-    top: 0;
-    cursor: pointer;
-    user-select: none;
-  }
-  th:hover { background: var(--teal); }
-  th .sort-arrow { font-size: 10px; margin-left: 4px; opacity: 0.7; }
+  button.primary { background:var(--teal); color:#fff; border:none; padding:10px 18px; border-radius:4px; font-weight:700; font-size:14px; cursor:pointer; }
+  button.primary:hover { opacity:.9; }
+  button.secondary { background:#fff; color:var(--teal); border:1px solid var(--teal); padding:9px 16px; border-radius:4px; font-weight:700; font-size:14px; cursor:pointer; }
+  button.secondary:hover { background:var(--bg); }
+  button.ghost { background:none; color:#888; border:1px solid var(--border); padding:9px 14px; border-radius:4px; font-size:13px; cursor:pointer; }
+  button.ghost:hover { background:var(--bg); }
 
-  /* Per-column filter row, sits right under the sortable header row */
-  .filter-row th {
-    background: #EFEDE6;
-    cursor: default;
-    padding: 4px 8px;
-    position: sticky;
-    top: 33px; /* sits just below the header row when scrolling */
-  }
-  .filter-row input {
-    width: 100%;
-    padding: 5px 7px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    font-size: 12px;
-    font-family: 'DM Sans', sans-serif;
-    color: var(--navy);
-  }
+  .table-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+  .search-box { flex:1; min-width:220px; max-width:360px; padding:9px 12px; border:1px solid var(--border); border-radius:4px; font-family:'DM Sans',sans-serif; font-size:14px; }
+  .search-box:focus { outline:2px solid var(--teal); outline-offset:-1px; }
+  .toolbar-actions { display:flex; gap:10px; }
 
-  tr:nth-child(even) { background: #FAFAF8; }
-  .table-wrap { max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
-  .empty-state { color: #888; font-size: 14px; padding: 20px 0; }
-  .row-count { font-size: 12px; color: #777; margin-top: 8px; }
-  td.num, th.num { text-align: right; }
-  td.num { font-variant-numeric: tabular-nums; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th { background:var(--navy); color:#fff; position:sticky; top:0; cursor:pointer; user-select:none; }
+  th:hover { background:var(--teal); }
+  th .sort-arrow { font-size:10px; margin-left:4px; opacity:.7; }
+  .filter-row th { background:#EFEDE6; cursor:default; padding:4px 8px; position:sticky; top:33px; }
+  .filter-row input { width:100%; padding:5px 7px; border:1px solid var(--border); border-radius:3px; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--navy); }
+  tr:nth-child(even) { background:#FAFAF8; }
+  .table-wrap { max-height:60vh; overflow:auto; border:1px solid var(--border); border-radius:4px; }
+  .empty-state { color:#888; font-size:14px; padding:20px 0; }
+  .row-count { font-size:12px; color:#777; margin-top:8px; }
+  td.num, th.num { text-align:right; }
+  td.num { font-variant-numeric:tabular-nums; }
+
+  /* Drill-down link buttons inside table cells */
+  .drill-links { display:inline-flex; gap:4px; margin-left:8px; vertical-align:middle; }
+  .drill-btn {
+    font-size:10px; padding:2px 6px; border-radius:3px;
+    border:1px solid var(--teal); color:var(--teal);
+    background:none; cursor:pointer; font-family:'DM Sans',sans-serif;
+    font-weight:700; white-space:nowrap;
+  }
+  .drill-btn:hover { background:var(--teal); color:#fff; }
 </style>
 </head>
 <body>
@@ -258,31 +101,25 @@
 <header>
   <h1>Sands Synergy — Reports</h1>
   <span id="report-title-tag"></span>
-  <span id="user-tag" style="font-size:13px; opacity:0.85;"></span>
+  <span id="user-tag" style="font-size:13px;opacity:.85;"></span>
 </header>
 
-<!-- Email login overlay - shown until a valid email is entered -->
-<div id="login-overlay" style="
-  position:fixed; inset:0; background:rgba(13,27,42,0.92);
-  display:flex; align-items:center; justify-content:center; z-index:1000;">
-  <div style="background:#fff; border-radius:8px; padding:40px 36px; width:360px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-    <h2 style="font-family:'Playfair Display',serif; color:#0D1B2A; margin:0 0 6px;">Sands Synergy</h2>
-    <p style="color:#1A7A6E; font-size:13px; margin:0 0 28px;">Reports Portal</p>
-    <div style="text-align:left; margin-bottom:16px;">
-      <label style="font-size:12px; font-weight:700; color:#0D1B2A; display:block; margin-bottom:6px;">Your Email Address</label>
+<!-- Email login overlay -->
+<div id="login-overlay" style="position:fixed;inset:0;background:rgba(13,27,42,.92);display:flex;align-items:center;justify-content:center;z-index:1000;">
+  <div style="background:#fff;border-radius:8px;padding:40px 36px;width:360px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3);">
+    <h2 style="font-family:'Playfair Display',serif;color:#0D1B2A;margin:0 0 6px;">Sands Synergy</h2>
+    <p style="color:#1A7A6E;font-size:13px;margin:0 0 28px;">Reports Portal</p>
+    <div style="text-align:left;margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:700;color:#0D1B2A;display:block;margin-bottom:6px;">Your Email Address</label>
       <input id="login-email" type="email" placeholder="you@sandssynergy.com"
-        style="width:100%; padding:10px 12px; border:1px solid #DDD8CC; border-radius:4px;
-               font-family:'DM Sans',sans-serif; font-size:14px;" />
+        style="width:100%;padding:10px 12px;border:1px solid #DDD8CC;border-radius:4px;font-family:'DM Sans',sans-serif;font-size:14px;" />
     </div>
-    <div id="login-error" style="color:#c0392b; font-size:12px; margin-bottom:12px; display:none;"></div>
+    <div id="login-error" style="color:#c0392b;font-size:12px;margin-bottom:12px;display:none;"></div>
     <button id="login-btn" onclick="handleLogin()"
-      style="width:100%; background:#1A7A6E; color:#fff; border:none; padding:11px;
-             border-radius:4px; font-weight:700; font-size:14px; cursor:pointer;">
+      style="width:100%;background:#1A7A6E;color:#fff;border:none;padding:11px;border-radius:4px;font-weight:700;font-size:14px;cursor:pointer;">
       Access Reports
     </button>
-    <p style="font-size:11px; color:#999; margin:16px 0 0;">
-      Use the email address registered with Sands Synergy
-    </p>
+    <p style="font-size:11px;color:#999;margin:16px 0 0;">Use the email address registered with Sands Synergy</p>
   </div>
 </div>
 
@@ -328,37 +165,122 @@
 <script>
   // ---- Configure this for your environment ----
   //const API_BASE = "https://sandsreports-g9d0g8dmd6d2anap.canadacentral-01.azurewebsites.net/api";
-const API_BASE = "/api";
+  const API_BASE = "/api";
   // ----------------------------------------------
 
-  let currentReport = null;
-  let allColumns = [];
-  let allRows = [];          // full, unfiltered data from the API
-  let columnFilters = {};    // { columnName: "typed text" }
-  let globalSearch = "";
-  let sortColumn = null;
-  let sortDirection = 1;     // 1 = ascending, -1 = descending
+  let currentReport   = null;
+  let allColumns      = [];
+  let allRows         = [];
+  let columnFilters   = {};
+  let globalSearch    = "";
+  let sortColumn      = null;
+  let sortDirection   = 1;
+  let currentUserEmail = null;
+  let allReports      = [];   // full catalog, used for drill-down lookups
 
-  // Keywords that signal a money/amount column needing 2dp formatting
-  const AMOUNT_KEYWORDS = ['amount', 'amt', 'price', 'rate', 'value', 'cost', 'total', 'charge'];
-  let columnMeta = {};   // { colName: { isNumeric, isAmount } }
+  const AMOUNT_KEYWORDS = ['amount','amt','price','rate','value','cost','total','charge'];
+  let columnMeta = {};
 
   function detectColumnMeta(columns, rows) {
     columnMeta = {};
     const sample = rows.slice(0, 50);
     columns.forEach(col => {
       const isAmount = AMOUNT_KEYWORDS.some(k => col.toLowerCase().includes(k));
-      const nonNull = sample.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== '');
-      const numericCount = nonNull.filter(v => !isNaN(Number(v))).length;
-      const isNumeric = nonNull.length > 0 && numericCount / nonNull.length >= 0.8;
+      const nonNull  = sample.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== '');
+      const numCount = nonNull.filter(v => !isNaN(Number(v))).length;
+      const isNumeric = nonNull.length > 0 && numCount / nonNull.length >= 0.8;
       columnMeta[col] = { isNumeric, isAmount };
     });
   }
 
+  // ---- Login ----
+  async function handleLogin() {
+    const email   = document.getElementById('login-email').value.trim().toLowerCase();
+    const errorEl = document.getElementById('login-error');
+    const btn     = document.getElementById('login-btn');
+
+    if (!email || !email.includes('@')) {
+      errorEl.textContent = 'Please enter a valid email address.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    btn.textContent = 'Checking...';
+    btn.disabled = true;
+    errorEl.style.display = 'none';
+
+    try {
+      const res  = await fetch(`${API_BASE}/reports?user_email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        errorEl.textContent = 'No reports found for this email. Please check the address or contact your administrator.';
+        errorEl.style.display = 'block';
+        btn.textContent = 'Access Reports';
+        btn.disabled = false;
+        return;
+      }
+
+      currentUserEmail = email;
+      allReports = data;
+      document.getElementById('login-overlay').style.display = 'none';
+      document.getElementById('user-tag').innerHTML =
+        `${email} &middot; <a href="#" onclick="handleLogout()" style="color:#fff;">Logout</a>`;
+
+      buildReportList(data);
+
+      // Auto-select report and run if URL has ?report=...&autorun=1
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('report') && urlParams.get('autorun') === '1') {
+        const targetReport = data.find(r => r.report_id === urlParams.get('report'));
+        if (targetReport) {
+          const btns = document.querySelectorAll('.report-link');
+          btns.forEach(b => { if (b.textContent === targetReport.display_name) b.classList.add('active'); });
+          autoRunReport(targetReport, urlParams);
+        }
+      }
+
+    } catch (e) {
+      errorEl.textContent = 'Connection error. Please try again.';
+      errorEl.style.display = 'block';
+      btn.textContent = 'Access Reports';
+      btn.disabled = false;
+    }
+  }
+
+  function buildReportList(reports) {
+    const list = document.getElementById('report-list');
+    list.innerHTML = '';
+    reports.forEach(r => {
+      const btn = document.createElement('button');
+      btn.className = 'report-link';
+      btn.textContent = r.display_name;
+      btn.onclick = () => selectReport(r, btn);
+      list.appendChild(btn);
+    });
+  }
+
+  function handleLogout() {
+    currentUserEmail = null;
+    allReports = [];
+    document.getElementById('login-overlay').style.display = 'flex';
+    document.getElementById('login-email').value = '';
+    document.getElementById('report-list').innerHTML = '';
+    document.getElementById('params-panel').style.display = 'none';
+    document.getElementById('results-panel').style.display = 'none';
+    document.getElementById('placeholder-panel').style.display = 'block';
+    document.getElementById('user-tag').innerHTML = '';
+  }
+
+  document.getElementById('login-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+  });
+
+  // ---- Report selection ----
   function selectReport(report, btnEl) {
     currentReport = report;
     document.querySelectorAll('.report-link').forEach(b => b.classList.remove('active'));
-    btnEl.classList.add('active');
+    if (btnEl) btnEl.classList.add('active');
 
     document.getElementById('placeholder-panel').style.display = 'none';
     document.getElementById('results-panel').style.display = 'none';
@@ -368,15 +290,18 @@ const API_BASE = "/api";
     document.getElementById('params-body').classList.remove('collapsed');
     document.getElementById('params-toggle').textContent = 'Hide';
 
+    // Only show params that aren't hidden drill-down params (p_ob_number etc)
+    // A param is "visible" if it has a display_label and param_order <= 2
+    // (year/month are 1 & 2; drill params are 3+)
     const fieldsWrap = document.getElementById('params-fields');
     fieldsWrap.innerHTML = '';
-    (report.parameters || []).forEach(p => {
+    const visibleParams = (report.parameters || []).filter(p => p.param_order <= 2);
+    visibleParams.forEach(p => {
       const field = document.createElement('div');
       field.className = 'field';
       const label = document.createElement('label');
       label.textContent = p.display_label + (p.is_required ? ' *' : '');
       field.appendChild(label);
-
       const input = document.createElement('input');
       input.type = p.param_type === 'date' ? 'date' : (p.param_type === 'int' ? 'number' : 'text');
       input.id = `param-${p.param_name}`;
@@ -387,11 +312,60 @@ const API_BASE = "/api";
     });
   }
 
-  // Builds the header row + the per-column filter row once per report run
+  // Auto-run when arriving from a drill-down link
+  async function autoRunReport(report, urlParams) {
+    currentReport = report;
+    document.getElementById('placeholder-panel').style.display = 'none';
+    document.getElementById('params-panel').style.display = 'block';
+    document.getElementById('params-heading').textContent = report.display_name;
+    document.getElementById('params-body').classList.add('collapsed');
+    document.getElementById('params-toggle').textContent = 'Show';
+
+    const params = new URLSearchParams({ user_email: currentUserEmail });
+    (report.parameters || []).forEach(p => {
+      const val = urlParams.get(p.param_name);
+      if (val) params.set(p.param_name, val);
+    });
+
+    await fetchAndRender(report, params);
+  }
+
+  // ---- Run report ----
+  async function runReport() {
+    if (!currentReport || !currentUserEmail) return;
+    const params = new URLSearchParams({ user_email: currentUserEmail });
+    (currentReport.parameters || []).forEach(p => {
+      const el = document.getElementById(`param-${p.param_name}`);
+      if (el && el.value !== '') params.set(p.param_name, el.value);
+    });
+    await fetchAndRender(currentReport, params);
+  }
+
+  async function fetchAndRender(report, params) {
+    const res  = await fetch(`${API_BASE}/report/${report.report_id}?${params.toString()}`);
+    const data = await res.json();
+
+    if (data.error) { alert(`Report error: ${data.error}`); return; }
+
+    allColumns = data.columns || [];
+    allRows    = data.rows    || [];
+    columnFilters = {};
+    globalSearch  = '';
+    sortColumn    = null;
+    document.getElementById('search-box').value = '';
+    detectColumnMeta(allColumns, allRows);
+
+    renderTableShell(allColumns);
+    applyFiltersAndRender();
+    document.getElementById('results-panel').style.display = 'block';
+    document.getElementById('params-body').classList.add('collapsed');
+    document.getElementById('params-toggle').textContent = 'Show';
+  }
+
+  // ---- Table rendering ----
   function renderTableShell(columns) {
     const table = document.getElementById('results-table');
     table.innerHTML = '';
-
     const thead = document.createElement('thead');
 
     const headRow = document.createElement('tr');
@@ -415,10 +389,7 @@ const API_BASE = "/api";
       const input = document.createElement('input');
       input.type = 'text';
       input.placeholder = 'Filter…';
-      input.oninput = (e) => {
-        columnFilters[col] = e.target.value;
-        applyFiltersAndRender();
-      };
+      input.oninput = e => { columnFilters[col] = e.target.value; applyFiltersAndRender(); };
       th.appendChild(input);
       filterRow.appendChild(th);
     });
@@ -430,53 +401,34 @@ const API_BASE = "/api";
     table.appendChild(tbody);
   }
 
-  function cssSafe(s) {
-    return s.replace(/[^a-zA-Z0-9]/g, '_');
-  }
+  function cssSafe(s) { return s.replace(/[^a-zA-Z0-9]/g, '_'); }
 
   function toggleSort(column) {
-    if (sortColumn === column) {
-      sortDirection *= -1;
-    } else {
-      sortColumn = column;
-      sortDirection = 1;
-    }
+    sortDirection = sortColumn === column ? sortDirection * -1 : 1;
+    sortColumn = column;
     applyFiltersAndRender();
   }
 
   function applyFiltersAndRender() {
     let rows = allRows;
-
-    // Per-column filters: substring match, case-insensitive
     Object.keys(columnFilters).forEach(col => {
       const term = (columnFilters[col] || '').trim().toLowerCase();
-      if (term) {
-        rows = rows.filter(r => String(r[col] ?? '').toLowerCase().includes(term));
-      }
+      if (term) rows = rows.filter(r => String(r[col] ?? '').toLowerCase().includes(term));
     });
-
-    // Global smart search: matches if ANY column contains the text
     if (globalSearch.trim()) {
       const term = globalSearch.trim().toLowerCase();
-      rows = rows.filter(r =>
-        allColumns.some(col => String(r[col] ?? '').toLowerCase().includes(term))
-      );
+      rows = rows.filter(r => allColumns.some(col => String(r[col] ?? '').toLowerCase().includes(term)));
     }
-
-    // Sorting
     if (sortColumn) {
       rows = [...rows].sort((a, b) => {
         let va = a[sortColumn], vb = b[sortColumn];
         if (va == null) return 1;
         if (vb == null) return -1;
         const na = Number(va), nb = Number(vb);
-        if (!isNaN(na) && !isNaN(nb) && va !== '' && vb !== '') {
-          return (na - nb) * sortDirection;
-        }
+        if (!isNaN(na) && !isNaN(nb) && va !== '' && vb !== '') return (na - nb) * sortDirection;
         return String(va).localeCompare(String(vb)) * sortDirection;
       });
     }
-
     renderRows(allColumns, rows);
     updateSortArrows();
     document.getElementById('row-count').textContent =
@@ -487,20 +439,23 @@ const API_BASE = "/api";
   function updateSortArrows() {
     allColumns.forEach(col => {
       const el = document.getElementById(`sort-arrow-${cssSafe(col)}`);
-      if (!el) return;
-      el.textContent = sortColumn === col ? (sortDirection === 1 ? '▲' : '▼') : '';
+      if (el) el.textContent = sortColumn === col ? (sortDirection === 1 ? '▲' : '▼') : '';
     });
   }
 
   function renderRows(columns, rows) {
     const tbody = document.getElementById('results-tbody');
     tbody.innerHTML = '';
+    // Build a map of which columns have drill-down links for this report
+    const drillLinks = (currentReport?.drill_links || []);
+
     rows.forEach(row => {
       const tr = document.createElement('tr');
       columns.forEach(c => {
-        const td = document.createElement('td');
+        const td  = document.createElement('td');
         const meta = columnMeta[c];
-        const raw = row[c] ?? '';
+        const raw  = row[c] ?? '';
+
         if (meta?.isNumeric && raw !== '') {
           td.classList.add('num');
           const num = Number(raw);
@@ -508,16 +463,43 @@ const API_BASE = "/api";
         } else {
           td.textContent = raw;
         }
+
+        // Add drill-down link buttons for columns that have relationships defined
+        const links = drillLinks.filter(l => l.source_column === c);
+        if (links.length > 0 && raw !== '') {
+          const linkWrap = document.createElement('span');
+          linkWrap.className = 'drill-links';
+          links.sort((a, b) => a.sort_order - b.sort_order).forEach(link => {
+            const btn = document.createElement('button');
+            btn.className = 'drill-btn';
+            btn.textContent = link.link_label;
+            btn.title = `View ${link.link_label} for ${raw}`;
+            btn.onclick = () => openDrillDown(link, raw);
+            linkWrap.appendChild(btn);
+          });
+          td.appendChild(linkWrap);
+        }
+
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
     });
   }
 
+  function openDrillDown(link, cellValue) {
+    // Open the target report in a new tab with the cell value pre-filled
+    // and autorun=1 so it runs immediately without the user clicking anything
+    const params = new URLSearchParams({
+      report: link.target_report,
+      [link.target_param]: cellValue,
+      autorun: '1'
+    });
+    window.open(`${window.location.pathname}?${params.toString()}`, '_blank');
+  }
+
+  // ---- Excel export (ExcelJS) ----
   async function exportToExcel() {
     if (!allRows.length) return;
-
-    // Apply same active filters as the table display
     let rows = allRows;
     Object.keys(columnFilters).forEach(col => {
       const term = (columnFilters[col] || '').trim().toLowerCase();
@@ -531,190 +513,69 @@ const API_BASE = "/api";
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(currentReport.display_name.slice(0, 31));
 
-    // Header row with yellow fill
     ws.addRow(allColumns);
     const headerRow = ws.getRow(1);
     headerRow.eachCell(cell => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
-      cell.font = { bold: true, color: { argb: 'FF0D1B2A' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      cell.border = {
-        bottom: { style: 'thin', color: { argb: 'FF0D1B2A' } }
-      };
+      cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFC000' } };
+      cell.font = { bold:true, color:{ argb:'FF0D1B2A' } };
+      cell.alignment = { vertical:'middle', horizontal:'center' };
+      cell.border = { bottom:{ style:'thin', color:{ argb:'FF0D1B2A' } } };
     });
     headerRow.height = 20;
 
-    // Data rows
     rows.forEach(row => {
       const values = allColumns.map(col => {
         const val = row[col];
-        if (columnMeta[col]?.isNumeric && val !== null && val !== undefined && val !== '') {
-          return Number(val);
-        }
+        if (columnMeta[col]?.isNumeric && val !== null && val !== undefined && val !== '') return Number(val);
         return val ?? '';
       });
       ws.addRow(values);
     });
 
-    // Right-align numeric columns and apply number format for amounts
     allColumns.forEach((col, idx) => {
       const meta = columnMeta[col];
       if (meta?.isNumeric) {
         ws.getColumn(idx + 1).numFmt = meta.isAmount ? '#,##0.00' : '#,##0';
-        ws.getColumn(idx + 1).alignment = { horizontal: 'right' };
+        ws.getColumn(idx + 1).alignment = { horizontal:'right' };
       }
     });
 
-    // Auto column width based on max content length (header or data)
     ws.columns.forEach((col, idx) => {
       const colName = allColumns[idx] || '';
-      const maxDataLen = rows.reduce((max, row) => {
-        const val = String(row[colName] ?? '');
-        return Math.max(max, val.length);
-      }, 0);
+      const maxDataLen = rows.reduce((max, row) => Math.max(max, String(row[colName] ?? '').length), 0);
       col.width = Math.min(Math.max(colName.length, maxDataLen, 10) + 2, 40);
     });
 
-    // Download
     const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentReport.report_id}.xlsx`;
-    a.click();
+    const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `${currentReport.report_id}.xlsx`; a.click();
     URL.revokeObjectURL(url);
   }
 
+  // ---- Event listeners ----
   document.getElementById('run-btn').addEventListener('click', runReport);
   document.getElementById('export-btn').addEventListener('click', () => exportToExcel());
-  document.getElementById('search-box').addEventListener('input', (e) => {
-    globalSearch = e.target.value;
-    applyFiltersAndRender();
-  });
+  document.getElementById('search-box').addEventListener('input', e => { globalSearch = e.target.value; applyFiltersAndRender(); });
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
-    columnFilters = {};
-    globalSearch = '';
+    columnFilters = {}; globalSearch = '';
     document.getElementById('search-box').value = '';
     document.querySelectorAll('.filter-row input').forEach(i => i.value = '');
     applyFiltersAndRender();
   });
-
   document.getElementById('nav-toggle').addEventListener('click', () => {
     const nav = document.getElementById('report-nav');
     const btn = document.getElementById('nav-toggle');
     nav.classList.toggle('collapsed');
     btn.textContent = nav.classList.contains('collapsed') ? '»' : '«';
   });
-
   document.getElementById('params-toggle').addEventListener('click', () => {
     const body = document.getElementById('params-body');
-    const btn = document.getElementById('params-toggle');
+    const btn  = document.getElementById('params-toggle');
     body.classList.toggle('collapsed');
     btn.textContent = body.classList.contains('collapsed') ? 'Show' : 'Hide';
   });
-
-  let currentUserEmail = null;
-
-  async function handleLogin() {
-    const email = document.getElementById('login-email').value.trim().toLowerCase();
-    const errorEl = document.getElementById('login-error');
-    const btn = document.getElementById('login-btn');
-
-    if (!email || !email.includes('@')) {
-      errorEl.textContent = 'Please enter a valid email address.';
-      errorEl.style.display = 'block';
-      return;
-    }
-
-    btn.textContent = 'Checking...';
-    btn.disabled = true;
-    errorEl.style.display = 'none';
-
-    try {
-      const res = await fetch(`${API_BASE}/reports?user_email=${encodeURIComponent(email)}`);
-      const data = await res.json();
-
-      if (!Array.isArray(data) || data.length === 0) {
-        errorEl.textContent = 'No reports found for this email. Please check the address or contact your administrator.';
-        errorEl.style.display = 'block';
-        btn.textContent = 'Access Reports';
-        btn.disabled = false;
-        return;
-      }
-
-      // Success - store email, hide overlay, load reports
-      currentUserEmail = email;
-      document.getElementById('login-overlay').style.display = 'none';
-      document.getElementById('user-tag').innerHTML =
-        `${email} &middot; <a href="#" onclick="handleLogout()" style="color:#fff;">Logout</a>`;
-
-      const list = document.getElementById('report-list');
-      list.innerHTML = '';
-      data.forEach(r => {
-        const btn = document.createElement('button');
-        btn.className = 'report-link';
-        btn.textContent = r.display_name;
-        btn.onclick = () => selectReport(r, btn);
-        list.appendChild(btn);
-      });
-
-    } catch (e) {
-      errorEl.textContent = 'Connection error. Please try again.';
-      errorEl.style.display = 'block';
-      btn.textContent = 'Access Reports';
-      btn.disabled = false;
-    }
-  }
-
-  function handleLogout() {
-    currentUserEmail = null;
-    document.getElementById('login-overlay').style.display = 'flex';
-    document.getElementById('login-email').value = '';
-    document.getElementById('report-list').innerHTML = '';
-    document.getElementById('params-panel').style.display = 'none';
-    document.getElementById('results-panel').style.display = 'none';
-    document.getElementById('placeholder-panel').style.display = 'block';
-    document.getElementById('user-tag').innerHTML = '';
-  }
-
-  // Allow pressing Enter in the email field to submit
-  document.getElementById('login-email').addEventListener('keydown', e => {
-    if (e.key === 'Enter') handleLogin();
-  });
-
-  async function runReport() {
-    if (!currentReport || !currentUserEmail) return;
-    const params = new URLSearchParams({ user_email: currentUserEmail });
-    (currentReport.parameters || []).forEach(p => {
-      const el = document.getElementById(`param-${p.param_name}`);
-      if (el && el.value !== '') params.set(p.param_name, el.value);
-    });
-
-    const res = await fetch(`${API_BASE}/report/${currentReport.report_id}?${params.toString()}`);
-    const data = await res.json();
-
-    if (data.error) {
-      alert(`Report error: ${data.error}`);
-      return;
-    }
-
-    allColumns = data.columns || [];
-    allRows = data.rows || [];
-    columnFilters = {};
-    globalSearch = '';
-    sortColumn = null;
-    document.getElementById('search-box').value = '';
-    detectColumnMeta(allColumns, allRows);
-
-    renderTableShell(allColumns);
-    applyFiltersAndRender();
-    document.getElementById('results-panel').style.display = 'block';
-
-    document.getElementById('params-body').classList.add('collapsed');
-    document.getElementById('params-toggle').textContent = 'Show';
-  }
 </script>
-
 </body>
 </html>
