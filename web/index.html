@@ -85,6 +85,27 @@
   td.num, th.num { text-align:right; }
   td.num { font-variant-numeric:tabular-nums; }
 
+  /* Totals summary bar above the table */
+  .totals-bar {
+    display:flex; gap:24px; flex-wrap:wrap;
+    background:#0D1B2A; color:#fff;
+    padding:10px 16px; border-radius:4px 4px 0 0;
+    font-size:13px; align-items:center;
+  }
+  .totals-bar .t-label { opacity:0.7; font-size:11px; margin-bottom:2px; }
+  .totals-bar .t-value { font-weight:700; font-variant-numeric:tabular-nums; color:#C9A84C; }
+  .totals-bar .t-item { display:flex; flex-direction:column; }
+
+  /* Drill-down context banner */
+  .drill-banner {
+    background:#1A7A6E; color:#fff;
+    padding:8px 16px; font-size:13px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-radius:4px; margin-bottom:12px;
+  }
+  .drill-banner a { color:#C9A84C; text-decoration:none; font-weight:700; font-size:12px; }
+  .drill-banner a:hover { text-decoration:underline; }
+
   /* Drill-down link buttons inside table cells */
   .drill-links { display:inline-flex; gap:4px; margin-left:8px; vertical-align:middle; }
   .drill-btn {
@@ -145,6 +166,10 @@
     </div>
 
     <div class="panel" id="results-panel" style="display:none;">
+      <div id="drill-banner" style="display:none;" class="drill-banner">
+        <span id="drill-banner-text"></span>
+        <a href="javascript:window.close()">✕ Close tab</a>
+      </div>
       <div class="table-toolbar">
         <input type="text" class="search-box" id="search-box" placeholder="Search all columns…" />
         <div class="toolbar-actions">
@@ -152,6 +177,7 @@
           <button class="secondary" id="export-btn">Export to Excel</button>
         </div>
       </div>
+      <div id="totals-bar" style="display:none;" class="totals-bar"></div>
       <div class="table-wrap"><table id="results-table"></table></div>
       <div class="row-count" id="row-count"></div>
     </div>
@@ -179,6 +205,29 @@
   let allReports      = [];   // full catalog, used for drill-down lookups
 
   const AMOUNT_KEYWORDS = ['amount','amt','price','rate','value','cost','total','charge'];
+
+  // Columns to total in the summary bar - exact column names from report output
+  const TOTALS_COLUMNS = [
+    'Ordered Quantity',
+    'Order Amount',
+    'Total Purchase Amount',
+    'Invoiced Amount'
+  ];
+
+  function renderTotalsBar(rows) {
+    const bar = document.getElementById('totals-bar');
+    const activeTotals = TOTALS_COLUMNS.filter(c => allColumns.includes(c));
+    if (activeTotals.length === 0) { bar.style.display = 'none'; return; }
+    bar.innerHTML = '<div class="t-item"><div class="t-label">TOTALS</div><div class="t-value">↓</div></div>';
+    activeTotals.forEach(col => {
+      const total = rows.reduce((sum, row) => sum + (Number(row[col]) || 0), 0);
+      const item  = document.createElement('div');
+      item.className = 't-item';
+      item.innerHTML = `<div class="t-label">${col}</div><div class="t-value">${total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>`;
+      bar.appendChild(item);
+    });
+    bar.style.display = 'flex';
+  }
   let columnMeta = {};
 
   function detectColumnMeta(columns, rows) {
@@ -435,6 +484,7 @@ const visibleParams = (report.parameters || [])
       });
     }
     renderRows(allColumns, rows);
+    renderTotalsBar(rows);
     updateSortArrows();
     document.getElementById('row-count').textContent =
       `${rows.length} row${rows.length === 1 ? '' : 's'}` +
@@ -578,8 +628,19 @@ const visibleParams = (report.parameters || [])
   const _initParams = new URLSearchParams(window.location.search);
   const _initEmail  = _initParams.get('user_email');
   if (_initEmail) {
+    // Show drill-down context banner
+    const _drillReport = _initParams.get('report');
+    const _drillParam  = Array.from(_initParams.entries())
+        .find(([k]) => k !== 'report' && k !== 'autorun' && k !== 'user_email');
+    if (_drillParam) {
+      const banner = document.getElementById('drill-banner');
+      document.getElementById('drill-banner-text').textContent =
+        `Linked view — ${_drillParam[0].replace('p_ob_number','OB')}: ${_drillParam[1]}`;
+      banner.style.display = 'flex';
+      document.title = `${_drillParam[1]} — Sands Reports`;
+    }
     document.getElementById('login-email').value = _initEmail;
-    handleLogin();   // silently logs in, then autoRunReport fires since autorun=1 is also in URL
+    handleLogin();
   }
 </script>
 </body>
